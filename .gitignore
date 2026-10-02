@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+allure-results/
+allure-report/
+Claude outputs/
+.idea/
+# Share workspace settings (interpreter, GherkinLens excludes); keep other editor state local.
+.vscode/*
+!.vscode/settings.json

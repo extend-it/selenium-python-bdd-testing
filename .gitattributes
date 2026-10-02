@@ -1,0 +1,7 @@
+# Store every text file with LF in the repository, whatever core.autocrlf is set to locally.
+* text=auto eol=lf
+
+# Shell scripts run inside the Linux Jenkins container: keep LF line endings even on Windows.
+*.sh      text eol=lf
+Jenkinsfile text eol=lf
+jenkins/** text eol=lf

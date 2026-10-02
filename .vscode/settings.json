@@ -1,0 +1,5 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
+  "gherkinLens.excludePattern": "**/{node_modules,.venv,venv,env,virtualenv,.tox,__pycache__,dist,build,.eggs,.pytest_cache,allure-results}/**"
+}

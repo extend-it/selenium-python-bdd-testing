@@ -1,0 +1,20 @@
+# Start:   docker compose -f jenkins/docker-compose.yml up -d --build
+# Open:    http://localhost:8080  (user/password below)
+# Stop:    docker compose -f jenkins/docker-compose.yml down        (add -v to wipe Jenkins data)
+services:
+  jenkins:
+    build: .
+    image: selenium-pytest-jenkins:local
+    container_name: selenium-pytest-jenkins
+    ports:
+      - "8080:8080"
+    environment:
+      JENKINS_ADMIN_ID: admin
+      JENKINS_ADMIN_PASSWORD: admin   # local use only; change it if the port is reachable from elsewhere
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ..:/project:ro                # the project root, copied into the job workspace on each build
+    shm_size: "2gb"                   # Chromium crashes with the default 64 MB /dev/shm
+
+volumes:
+  jenkins_home:

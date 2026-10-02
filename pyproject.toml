@@ -1,0 +1,12 @@
+[project]
+name = "selenium-pytest-bdd"
+version = "0.1.0"
+description = "UI test automation scaffold: Python, pytest-bdd, Selenium, Page Object Model, Allure"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]

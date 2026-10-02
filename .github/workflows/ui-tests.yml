@@ -1,0 +1,123 @@
+name: UI tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 5 * * 1-5"   # weekdays 05:00 UTC
+  workflow_dispatch:
+    inputs:
+      markers:
+        description: "pytest -m filter (empty = all)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]   # both browsers are preinstalled on GitHub's Ubuntu runners
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          MARKERS: ${{ github.event.inputs.markers }}
+        run: |
+          if [ -n "$MARKERS" ]; then
+            pytest --browser ${{ matrix.browser }} --headless --alluredir allure-results -m "$MARKERS"
+          else
+            pytest --browser ${{ matrix.browser }} --headless --alluredir allure-results
+          fi
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ matrix.browser }}
+          path: allure-results
+          retention-days: 14
+
+  report:
+    name: Allure report
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-*
+          path: results
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # One report per browser so identical scenarios are not shown as retries of each other.
+      # ALLURE_VERSION matches jenkins/Dockerfile so both CI systems render identical reports.
+      - name: Generate reports
+        env:
+          ALLURE_VERSION: "2.32.0"
+        run: |
+          mkdir -p allure-report
+          links=""
+          for dir in results/allure-results-*; do
+            browser="${dir##*allure-results-}"
+            npx --yes "allure-commandline@${ALLURE_VERSION}" generate "$dir" --clean -o "allure-report/$browser"
+            links="$links<li><a href=\"$browser/index.html\">$browser</a></li>"
+          done
+          echo "<!doctype html><meta charset=utf-8><title>Allure reports</title><h1>Allure reports</h1><ul>$links</ul>" \
+            > allure-report/index.html
+
+      - name: Upload Allure report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
+          retention-days: 14
+
+      # Publishes to GitHub Pages only from main. Requires Settings > Pages > Source: "GitHub Actions".
+      - name: Prepare Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: allure-report
+
+  deploy-pages:
+    name: Publish report to GitHub Pages
+    needs: report
+    if: always() && needs.report.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

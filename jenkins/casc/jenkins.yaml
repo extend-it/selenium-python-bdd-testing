@@ -1,0 +1,58 @@
+# Jenkins Configuration as Code. Dollar-brace placeholders are filled from environment variables
+# (see jenkins/docker-compose.yml), so do not use dollar-brace syntax inside the job script below.
+jenkins:
+  systemMessage: "Local Jenkins for the selenium-pytest scaffold (configured by JCasC)"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "http://localhost:8080/"
+
+jobs:
+  - script: |
+      pipelineJob('selenium-pytest-local') {
+        description('Runs the UI suite from the project folder mounted at /project (no Git needed) and publishes an Allure report.')
+        parameters {
+          choiceParam('MARKERS', ['', 'smoke', 'login', 'cart'], 'pytest -m filter (empty = all)')
+        }
+        definition {
+          cps {
+            sandbox()
+            script('''
+              pipeline {
+                agent any
+                options {
+                  timestamps()
+                  timeout(time: 30, unit: 'MINUTES')
+                }
+                stages {
+                  stage('Copy project') {
+                    steps {
+                      sh 'rsync -a --delete --exclude .venv --exclude .git --exclude allure-results --exclude allure-report --exclude __pycache__ --exclude .pytest_cache /project/ ./'
+                    }
+                  }
+                  stage('UI tests') {
+                    steps {
+                      sh 'if [ -n "$MARKERS" ]; then bash scripts/run_tests.sh -m "$MARKERS"; else bash scripts/run_tests.sh; fi'
+                    }
+                  }
+                }
+                post {
+                  always {
+                    allure includeProperties: false, jdk: '', commandline: 'allure', results: [[path: 'allure-results']]
+                  }
+                }
+              }
+            '''.stripIndent())
+          }
+        }
+      }
