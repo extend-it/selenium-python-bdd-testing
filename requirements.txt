@@ -1,6 +1,6 @@
 # Runtime dependencies for the UI test suite.
 # Pinned to the versions the suite was last verified green with; bump deliberately and re-run.
-selenium==4.50.0        # 4.11+ ships Selenium Manager with automatic driver/browser resolution
+selenium==4.51.0        # 4.11+ ships Selenium Manager with automatic driver/browser resolution
 pytest==9.1.1
 pytest-bdd==9.0.0
 # Use ONLY the pytest-bdd flavour of the Allure adapter.
